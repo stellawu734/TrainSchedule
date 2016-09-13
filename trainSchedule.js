@@ -10,6 +10,9 @@ firebase.initializeApp(config);
 var db = firebase.database();
 var nextArrival = '';
 var minutesAway = 0;
+var ID = '';
+var startTime = '';
+setInterval(updateTime, 60000);
 
 $(document).on("click", "#submitBtn", function() {
   var trainName = $("#trainName").val().trim();
@@ -38,7 +41,7 @@ $(document).on("click", "#submitBtn", function() {
   }
 
 
-  db.ref().push({
+var newPush = db.ref().push({
     name: trainName,
     destination: destination,
     firstTime: firstTime,
@@ -46,6 +49,7 @@ $(document).on("click", "#submitBtn", function() {
     nextArrival:nextArrival,
     minutesAway:minutesAway
   });
+
 
  $("#trainName").empty();
  $("#destination").empty();
@@ -62,15 +66,17 @@ db.ref().on("child_added", function(childSnapshot) {
   var dbFrequency = (childSnapshot.val().frequency);
   var dbNextArrival = (childSnapshot.val().nextArrival);
   var dbMinutesAway = (childSnapshot.val().minutesAway);
-
-
+  console.log(childSnapshot.key);
+  ID = childSnapshot.key;
+  startTime = dbFirstTime;
 
   var newRow = $('<tr>');
-  var td1 = $('<td>').html(dbName);
-  var td2 = $('<td>').html(dbDestination);
-  var td3 = $('<td>').html(dbFrequency);
-  var td4 = $('<td>').html(dbNextArrival);
-  var td5 = $('<td>').html(dbMinutesAway);
+  var td1 = $('<td>').html(dbName).attr('id',ID+'Name');
+  var td2 = $('<td>').html(dbDestination).attr('id',ID+'Destination');
+  var td3 = $('<td>').html(dbFrequency).attr('id',ID+'Frequency');
+  var td4 = $('<td>').html(dbNextArrival).attr('id',ID+'NextArrival');
+  var td5 = $('<td>').html(dbMinutesAway).attr('id',ID+'minutesAway');
+  
 
 
 
@@ -82,4 +88,40 @@ db.ref().on("child_added", function(childSnapshot) {
 }, function(error) {
   console.log(error.code);
 });
+
+function updateTime() {
+   
+  var formatted = startTime+":00";
+  console.log(formatted);
+  var frequency = parseInt($('#'+ID+'Frequency').text());
+  console.log(frequency);
+  var now = moment();
+  var date = now.format('YYYY-MM-DD');
+  var time = now.format('HH:mm:ss');
+  var converted = moment(new Date(date+" "+formatted));
+  console.log(converted);
+  var difference = now.diff(converted,'minutes');
+  console.log(difference);
+  if(difference<=0){
+     nextArrival = startTime;
+     minutesAway = difference*(-1);
+    console.log(nextArrival);
+    console.log(minutesAway);
+  } else {
+    var multiplier = Math.ceil(difference/frequency);
+    var addTime = multiplier*frequency;
+    console.log(addTime);
+    nextArrival = now.add(addTime,'minutes').subtract(difference,'minutes').format('HH:mm A');
+    minutesAway = addTime - difference;
+    console.log(nextArrival);
+    console.log(minutesAway);
+  }
+
+   db.ref().child(ID).update({
+    nextArrival:nextArrival,
+    minutesAway:minutesAway
+    });
+  $('#'+ID+'nextArrival').html(nextArrival);
+  $('#'+ID+'minutesAway').html(minutesAway);
+};
 
